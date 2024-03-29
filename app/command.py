@@ -7,6 +7,7 @@ import logging
 from logging.handlers import TimedRotatingFileHandler
 import os
 import re
+import select
 import subprocess
 import time
 
@@ -15,6 +16,7 @@ load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ITERM2_LOGS = os.getenv("ITERM2_LOGS")
+CLI_LOG_DELIMITER = os.getenv("CLI_LOG_DELIMITER")
 COMMAND_DELIM = "PLEASE RUN COMMANDS"
 
 
@@ -23,7 +25,7 @@ log.setLevel(logging.INFO)
 
 # Create a TimedRotatingFileHandler for daily log rotation
 file_handler = TimedRotatingFileHandler(
-    "file.log", when="midnight", interval=1, backupCount=7
+    os.path.expanduser("~/lew.log"), when="midnight", interval=1, backupCount=7
 )
 file_handler.setLevel(logging.INFO)
 
@@ -57,7 +59,7 @@ def get_latest_outputs(cnt):
                 content,
             )
             # remove the first character as its always duplicated from iTerm2
-            split_content = [item[1:] for item in content.split("─╯")]
+            split_content = [item[1:] for item in content.split(CLI_LOG_DELIMITER)]
             outputs_to_send = "\n\n".join(split_content[-cnt - 1 : -1])
 
         for file in log_files:
@@ -73,6 +75,48 @@ def get_latest_outputs(cnt):
         )
 
 
+def run_command(command):
+    process = subprocess.Popen(
+        command,
+        shell=True,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    log.info(f"Running command: {command}")
+    print(f"Running command: {command}")
+
+    final_output = ""
+    while True:
+        # Check if there's output to read
+        reads = [process.stdout.fileno(), process.stderr.fileno()]
+        ret = select.select(reads, [], [])
+
+        for fd in ret[0]:
+            if fd == process.stdout.fileno():
+                output = process.stdout.read1(1024).decode()
+                if output:
+                    print(output.strip())
+                    final_output += output.strip()
+
+        # If the command is asking for input, get it from the user
+        if "Enter your input:" in final_output:
+            user_input = input(final_output)
+            process.stdin.write(user_input.encode())
+            process.stdin.flush()
+
+        # If the command has finished running, break the loop
+        if process.poll() is not None:
+            break
+
+    # Print the final output
+    # if final_output:
+    #     print("\n---\nfinal", final_output, "---\n\n")
+
+    return final_output
+
+
 def run_commands(entire_message, user_message, original_outputs_to_send):
     all_commands = entire_message.split(COMMAND_DELIM)[1].strip()
     commands_to_run = all_commands.split("\n")
@@ -81,26 +125,21 @@ def run_commands(entire_message, user_message, original_outputs_to_send):
     while True:
         print("\n\nDo you want to run the commands?")
         answer = input("You may press CTRL+C at any time to stop them. (y/n): ").lower()
+        print("")
         if answer in ["y", "yes"]:
             for command in commands_to_run:
-                log.info(f"Running command: {command}")
-                print(f"\nRunning command: {command}")
-                output = subprocess.run(
-                    command, shell=True, capture_output=True, text=True
-                )
-                print(output.stdout)
-                log.info(f"Command output: {output.stdout}")
-                commands_run.append({"command": command, "output": output.stdout})
+                output = run_command(command)
+                log.info(f"Command output: {output}")
+                commands_run.append({"command": command, "output": output})
 
             if commands_run:
-                print("\n\nCommands run:")
                 commands_outputs = "\n\n".join(
                     [
                         f"Command:{command['command']}\nOutput:\n{command['output']}"
                         for command in commands_run
                     ]
                 )
-                new_outputs = f"GPT response:{entire_message}\n\nCommands run:\n{commands_outputs}"
+                new_outputs = f"\nGPT response:{entire_message}\n\nCommands run:\n{commands_outputs}"
                 print(new_outputs)
                 log.info(f"New outputs: {new_outputs}")
                 call_gpt(user_message, new_outputs)
@@ -125,9 +164,9 @@ def call_gpt(message, outputs_to_send):
         "messages": [
             {
                 "role": "system",
-                "content": f"""You are a GPT configured in a cli, your app name is `lew`.
+                "content": f"""You are lew, a GPT running in a cli.
 
-You're goal is to support the user with command line interface (CLI) issues. \
+You're goal is to support the user with their command line interface (CLI). They will be interacting with you through their cli. \
 They will send you the last command(s) they've executed along with the output of that command. They may send you more than one \
 command and output or none at all. They may also include any additional comments or questions they may have.
 
@@ -144,6 +183,7 @@ If the user is talking about you, `lew`, here are your options:
 
 You can request the user to run commands for you:
 - If you want to run any specific command to view its output: comamnd args\ncommand args.
+- If the user asks you to create files, provide all the commands to create and insert the text as needed.
 - You can ask for contents of a specific file, use typical cli commands to read the file to the console and send it back to you.
 - Output the array at the end of your message, with comamnds on each line, do not combine commands. Format as:
   {COMMAND_DELIM}

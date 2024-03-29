@@ -10,8 +10,7 @@ Basic example:
 
 LEW will also request to run commands to further support your request.
 
-https://github.com/DavidLozzi/lew-llm-cli/assets/3543383/c88a2656-c265-4737-8f8a-18193add68bb
-
+<https://github.com/DavidLozzi/lew-llm-cli/assets/3543383/c88a2656-c265-4737-8f8a-18193add68bb>
 
 ## Learn more
 
@@ -21,6 +20,7 @@ I will have a blog post up soon at davidlozzi.com
 
 * Only works in iTerm2, doesn't work in VSCode terminal or other terminals where iTerm2 isn't in use.
 * Will not work when SSH'd into another server.
+* If a command run by lew is prompting for user input, you will not see it. Cancel the job and run the command manually.
 
 ### TODO
 
@@ -32,6 +32,7 @@ _in no particular order_
 * Improve logging capture, remove need for iTerm2 ([attempted with ZSH natively](/zsh%20logging.md))
 * Allow user to specify which commands to send, instead of starting from the last command, i.e. send commands 2 and 3 I ran, not the immediate last one.
 * Explore how to support when SSH'd in another server (is it as simple as following steps below except for the iTerm2 steps?)
+* Create an easier install/setup script
 * Currently the script only looks at the last log file, expand it to treat all logs as it's "db"
 * Support Bash, PowerShell, Windows Command, and whatever else.
 * ~~Allow the LLM to provide updated commands and enable the user to run them~~
@@ -65,6 +66,9 @@ To get started, you'll need:
             or
 
         * Create a folder where ever you want, and update the variable `ITERM2_LOGS` in `.env`
+    1. Update your cli logging delimiter:
+        1. In iTerm2, you'll see your cli command prompt prefix, usually something like username@machinename, i.e. `david.lozzi@KHH9RGC0WN` on my machine. Copy that value.
+        1. Edit the `.env` file and set your `CLI_LOG_DELIMITER` value.
 1. Edit your `~/.zshrc` file, you can do this by:
     1. If you have VSCode in your cli, enter `code ~/.zshrc`
     1. If you like vim, enter `vim ~/.zshrc`
@@ -77,8 +81,9 @@ To get started, you'll need:
 ### Some more notes
 
 1. The python script `command.py` will clean up the `iterm2_logs` folder automatically, keeping only the last 7 days
+1. This script itself writes to `~/lew.log` and will only keep the last 7 days of logs.
 
-## Running gli Co-Pilot
+## Running lew
 
 Real simple, after an error or command run, just enter `lew` and hit enter!
 
