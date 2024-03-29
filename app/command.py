@@ -82,7 +82,6 @@ def call_gpt(message, outputs_to_send):
         "Content-Type": "application/json",
         "Authorization": f"Bearer {OPENAI_API_KEY}",
     }
-    # - If you want to see the contents of a specific file, provide the array: `['cat filename.ext', 'lew --cnt 2']`.
 
     request_body = {
         "messages": [
