@@ -88,7 +88,7 @@ lew "message to include" --cnt 2
 __Help with a git command__
 
 ```bash
-❯ git st
+❯ git status
 fatal: not a git repository (or any of the parent directories): .git
 ❯ lew
 
@@ -97,7 +97,7 @@ Calling GPT to get your answer...
 The error message you're seeing, `fatal: not a git repository (or any of the parent directories): .git`, indicates that....
 ```
 
-__Troubleshooting a file___
+__Troubleshooting a specific file__
 
 ```bash
 lew "my package file is messing up" --cnt 0                                                                                            ─╯
