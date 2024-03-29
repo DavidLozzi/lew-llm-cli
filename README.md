@@ -12,6 +12,11 @@ LEW will also request to run commands to further support your request.
 
 <https://github.com/DavidLozzi/lew-llm-cli/assets/3543383/c88a2656-c265-4737-8f8a-18193add68bb>
 
+Use LEW to quickly navigate AWS.
+
+https://github.com/DavidLozzi/lew-llm-cli/assets/3543383/2871092e-58b4-417b-8ae7-8ed4972b4e3c
+
+
 ## Learn more
 
 I will have a blog post up soon at davidlozzi.com
