@@ -5,7 +5,7 @@ A powerfully simple tool for your CLI. Send your last commands to an LLM and get
 _note: the video is using an old command alias_
 
 <video width="600" controls>
-  <source src="lew.mp4" type="video/mp4">
+  <source src="https://github.com/DavidLozzi/lew-llm-cli/blob/main/lew.mp4" type="video/mp4">
   Your browser does not support the video tag.
 </video>
 
