@@ -45,6 +45,7 @@ To get started, you'll need:
 
 1. Python v3 or later
 1. [iTerm2](https://iterm2.com/) installed on your Mac
+    1. You can add the config `"terminal.external.osxExec": "iTerm.app"` to your VSCode `settings.json` file to use iTerm in VScode.
 1. Clone this repo to your local machine
     1. Run `pip install -r requirements.txt` to install dependencies.
 1. Copy the `.env.sample` file to `.env` (it will be ignored by git)
