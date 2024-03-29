@@ -1,13 +1,15 @@
 import argparse
+from dotenv import load_dotenv
 import glob
 import httpx
 import json
+import logging
+from logging.handlers import TimedRotatingFileHandler
 import os
 import re
 import subprocess
 import time
 
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -16,45 +18,78 @@ ITERM2_LOGS = os.getenv("ITERM2_LOGS")
 COMMAND_DELIM = "PLEASE RUN COMMANDS"
 
 
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
+
+# Create a TimedRotatingFileHandler for daily log rotation
+file_handler = TimedRotatingFileHandler(
+    "file.log", when="midnight", interval=1, backupCount=7
+)
+file_handler.setLevel(logging.INFO)
+
+log_format = logging.Formatter(
+    "%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+)
+file_handler.setFormatter(log_format)
+
+log.addHandler(file_handler)
+
+# Add handlers to the logger
+log.addHandler(file_handler)
+
+
 def get_latest_outputs(cnt):
-    # Get a list of all log files
-    log_files = glob.glob(os.path.expanduser(ITERM2_LOGS))
+    try:
+        # Get a list of all log files
+        log_files = glob.glob(os.path.expanduser(ITERM2_LOGS))
+        log.info(f"Log files from {ITERM2_LOGS}: {log_files}")
 
-    # Find the newest log file
-    newest_log_file = max(log_files, key=os.path.getctime)
+        # Find the newest log file
+        newest_log_file = max(log_files, key=os.path.getctime)
+        log.info(f"Newest log file: {newest_log_file}")
 
-    # Read the newest log file and split its content
-    with open(newest_log_file, "r") as file:
-        content = file.read()
-        content = re.sub(
-            r"^\[\d{2}/\d{2}/\d{4}, \d{1,2}:\d{2}:\d{2}\.\d{3}\s[AP]M\]\s", "", content
+        # Read the newest log file and split its content
+        with open(newest_log_file, "r") as file:
+            content = file.read()
+            content = re.sub(
+                r"^\[\d{2}/\d{2}/\d{4}, \d{1,2}:\d{2}:\d{2}\.\d{3}\s[AP]M\]\s",
+                "",
+                content,
+            )
+            # remove the first character as its always duplicated from iTerm2
+            split_content = [item[1:] for item in content.split("─╯")]
+            outputs_to_send = "\n\n".join(split_content[-cnt - 1 : -1])
+
+        for file in log_files:
+            SECONDS_IN_A_WEEK = 7 * 24 * 60 * 60
+            if os.path.getctime(file) < time.time() - SECONDS_IN_A_WEEK:
+                os.remove(file)
+
+        return outputs_to_send
+    except Exception as e:
+        log.error(f"get_latest_outputs: {e}")
+        print(
+            "Failed to get the latest command outputs. Please check the logs for more information."
         )
-        # remove the first character as its always duplicated from iTerm2
-        split_content = [item[1:] for item in content.split("─╯")]
-        outputs_to_send = "\n\n".join(split_content[-cnt - 1 : -1])
-
-    for file in log_files:
-        SECONDS_IN_A_WEEK = 7 * 24 * 60 * 60
-        if os.path.getctime(file) < time.time() - SECONDS_IN_A_WEEK:
-            os.remove(file)
-
-    return outputs_to_send
 
 
 def run_commands(entire_message, user_message, original_outputs_to_send):
-    print("\n\nDo you want to run the commands?")
     all_commands = entire_message.split(COMMAND_DELIM)[1].strip()
     commands_to_run = all_commands.split("\n")
+    log.info(f"Commands to run: {commands_to_run}")
     commands_run = []
     while True:
+        print("\n\nDo you want to run the commands?")
         answer = input("You may press CTRL+C at any time to stop them. (y/n): ").lower()
         if answer in ["y", "yes"]:
             for command in commands_to_run:
+                log.info(f"Running command: {command}")
                 print(f"\nRunning command: {command}")
                 output = subprocess.run(
                     command, shell=True, capture_output=True, text=True
                 )
                 print(output.stdout)
+                log.info(f"Command output: {output.stdout}")
                 commands_run.append({"command": command, "output": output.stdout})
 
             if commands_run:
@@ -67,12 +102,15 @@ def run_commands(entire_message, user_message, original_outputs_to_send):
                 )
                 new_outputs = f"GPT response:{entire_message}\n\nCommands run:\n{commands_outputs}"
                 print(new_outputs)
+                log.info(f"New outputs: {new_outputs}")
                 call_gpt(user_message, new_outputs)
             return False
         elif answer in ["n", "no"]:
+            log.info("User chose not to run the commands.")
             print("Okay, I won't run the commands.")
             return False
         else:
+            log.info("User did not enter a valid answer.")
             print("Please enter yes or no.")
 
 
@@ -133,12 +171,17 @@ If their request is ambiguous, ask for clarification, and instruct them to incre
     openai_url = "https://api.openai.com/v1/chat/completions"
     httpx_client = httpx.Client()
     entire_message = ""
-    print("\nCalling GPT to get your answer...\n", flush=True)
+    print("\n\033[92mCalling GPT to get your answer...\n", flush=True)
+    log.info(f"Calling GPT with message: {message}\nOutputs: {outputs_to_send}")
+
     with httpx_client.stream(
         method="POST", url=openai_url, json=request_body, headers=headers, timeout=60
     ) as response:
         if response.status_code != 200:
             print(f"Failed to call the API: {response.status_code}", flush=True)
+            log.error(
+                f"call_gpt Failed to call the API: {response.status_code} {response}"
+            )
             exit(1)
 
         for line in response.iter_lines():
@@ -162,11 +205,15 @@ If their request is ambiguous, ask for clarification, and instruct them to incre
                                 flush=True,
                             )
             except Exception as e:
+                log.error(f"call_gpt {e}")
                 print(f"\n\nError: {e}")
                 print(line)
                 exit(1)
 
+    log.info(f"Entire message from GPT: {entire_message}")
     if COMMAND_DELIM in entire_message:
+        print("\033[0m")
+        log.info("Command delimiter exists, running commands")
         run_commands(entire_message, message, outputs_to_send)
 
 
@@ -185,6 +232,7 @@ def main():
     )
 
     args = parser.parse_args()
+    log.info(f"\n\nSTARTING SCRIPT. Arguments: {args}")
 
     outputs_to_send = f"User's command and output:\n{get_latest_outputs(args.cnt)}"
 
@@ -193,6 +241,7 @@ def main():
     else:
         message = ""
 
+    log.info(f"Message: {message}\nOutputs: {outputs_to_send}")
     call_gpt(message, outputs_to_send)
 
 
