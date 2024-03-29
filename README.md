@@ -1,5 +1,7 @@
 # LEW - your LLM Enhanced Workflow in your cli
 
+<img src="https://github.com/DavidLozzi/lew-llm-cli/blob/main/icon.jpeg" style="width:200px">
+
 A powerfully simple tool for your CLI. Send your last commands to an LLM and get instant help!
 
 Basic example:
