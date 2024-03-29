@@ -97,6 +97,37 @@ Calling GPT to get your answer...
 The error message you're seeing, `fatal: not a git repository (or any of the parent directories): .git`, indicates that....
 ```
 
+__Troubleshooting a file___
+
+```bash
+lew "my package file is messing up" --cnt 0                                                                                            ─╯
+
+Calling GPT to get your answer...
+
+To help you effectively, I need to know which package file you're referring to and what specific issue you're encountering. If it's a `package.json` for a Node.js project, or a different package file for another language or framework, please specify. Additionally, running a command that shows the error or problem you're facing with the package file can greatly help in diagnosing the issue.
+
+If you can, please run the command that leads to the error, and then use:
+
+---
+lew --cnt 2
+---
+
+to send me the command along with its output. If it's an issue with the content of the package file itself, consider running:
+
+---
+cat path/to/packagefile
+---
+
+And then:
+
+---
+lew --cnt 2
+---
+
+to show me the contents of the file.%
+```
+
+
 __Chat without sending the last command__
 
 ```bash
