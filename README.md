@@ -134,7 +134,6 @@ lew --cnt 2
 to show me the contents of the file.%
 ```
 
-
 __Chat without sending the last command__
 
 ```bash
@@ -159,6 +158,8 @@ Some common things I've run into:
 * __`Failed to call the API: 401`__ - make sure your API key is correct.
 * __Running `lew` responds to another command, not your last one.__ Are you running your current command in `iTerm2`? Can you see your command and output in the `iterm2_logs` folder you configured?
 
-## Contribution
+If you have other issues, [post an Issue here](https://github.com/DavidLozzi/lew-llm-cli/issues).
 
-Yes please, coming soon, just fork it for now
+## Contributing
+
+I love contributions from everyone. Go ahead and __Fork the repository__, perform your work, and then post a PR.
