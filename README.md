@@ -30,12 +30,12 @@ _in no particular order_
 
 * Switch to Anthropic just to check it out
 * Improve logging capture, remove need for iTerm2 ([attempted with ZSH natively](/zsh%20logging.md))
-* Allow the LLM to provide updated commands and enable the user to run them
-* Send contents of a file as desired to the LLM
 * Allow user to specify which commands to send, instead of starting from the last command, i.e. send commands 2 and 3 I ran, not the immediate last one.
 * Explore how to support when SSH'd in another server (is it as simple as following steps below except for the iTerm2 steps?)
 * Currently the script only looks at the last log file, expand it to treat all logs as it's "db"
 * Support Bash, PowerShell, Windows Command, and whatever else.
+* ~~Allow the LLM to provide updated commands and enable the user to run them~~
+* ~~Send contents of a file as desired to the LLM~~
 
 ## Set Up
 
