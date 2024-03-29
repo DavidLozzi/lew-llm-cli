@@ -4,7 +4,7 @@ A powerfully simple tool for your CLI. Send your last commands to an LLM and get
 
 _note: the video is using an old command alias_
 
-https://github.com/DavidLozzi/lew-llm-cli/assets/3543383/67161168-aca2-4fc9-bfb2-3a8dae6f1543
+<https://github.com/DavidLozzi/lew-llm-cli/assets/3543383/67161168-aca2-4fc9-bfb2-3a8dae6f1543>
 
 ## Learn more
 
@@ -63,7 +63,7 @@ To get started, you'll need:
     1. Or `open ~/`, then in Finder, press `CMD+SHIFT+.` to view hidden files then open the file in your editor of choice.
 1. Add the following line:
 
-    * `alias lew="python ~/git/cli-copilot/app/command.py"`
+    * `alias lew="python ~/git/lew-llm-cli/app/command.py"`
         * Update the location of the `command.py` file (prereqs #3)
 
 ### Some more notes
