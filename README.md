@@ -2,9 +2,14 @@
 
 A powerfully simple tool for your CLI. Send your last commands to an LLM and get instant help!
 
-_note: the video is using an old command alias_
+Basic example:
 
 <https://github.com/DavidLozzi/lew-llm-cli/assets/3543383/67161168-aca2-4fc9-bfb2-3a8dae6f1543>
+
+LEW will also request to run commands to further support your request.
+
+https://github.com/DavidLozzi/lew-llm-cli/assets/3543383/c88a2656-c265-4737-8f8a-18193add68bb
+
 
 ## Learn more
 
