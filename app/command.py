@@ -58,8 +58,13 @@ def get_latest_outputs(cnt):
                 "",
                 content,
             )
-            # remove the first character as its always duplicated from iTerm2
-            split_content = [item[1:] for item in content.split(CLI_LOG_DELIMITER)]
+            # after splitting the log on the username@computer, we remove the first part
+            # david.lozzi@KHH9RGC0WN git % oopen ~/iterm2_logs/
+            # ^  this is split out ^        ^ then we find the % and remove 3 characters
+            #                                 after it as the command is always double keyed
+            split_content = [
+                item[item.find("%") + 3 :] for item in content.split(CLI_LOG_DELIMITER)
+            ]
             outputs_to_send = "\n\n".join(split_content[-cnt - 1 : -1])
 
         for file in log_files:
