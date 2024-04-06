@@ -17,7 +17,7 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ITERM2_LOGS = os.getenv("ITERM2_LOGS")
 CLI_LOG_DELIMITER = os.getenv("CLI_LOG_DELIMITER")
-COMMAND_DELIM = "PLEASE RUN COMMANDS"
+COMMAND_DELIM = "PLEASE RUN COMMAND"
 
 
 log = logging.getLogger(__name__)
@@ -123,7 +123,9 @@ def run_command(command):
 
 
 def run_commands(entire_message, user_message, original_outputs_to_send):
-    all_commands = entire_message.split(COMMAND_DELIM)[1].strip()
+    pattern = re.compile(COMMAND_DELIM + "S?", re.IGNORECASE)
+    all_commands = re.split(pattern, entire_message)[1].strip()
+
     commands_to_run = all_commands.split("\n")
     log.info(f"Commands to run: {commands_to_run}")
     commands_run = []
