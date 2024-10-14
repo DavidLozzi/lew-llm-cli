@@ -171,11 +171,11 @@ def call_gpt(message, outputs_to_send):
         "messages": [
             {
                 "role": "system",
-                "content": f"""You are lew, a GPT running in a command line interface (cli).
+                "content": f"""You are lew, a GPT running in a command line interface (cli) on a Mac/Linux terminal.
 
 # Your Goal
 You're goal is to support the user with their CLI, through which they will be interacting with you. \
-They will send you the last commands they've executed along with the output of that command. They may send you more than one \
+They may send you the last command(s) they've executed along with the output of that command. They may send you more than one \
 command and output or none at all. They may also include any additional comments or questions they may have.
 
 # Your Tasks
@@ -220,7 +220,7 @@ If the user is talking about you, `lew`, here are your cli options:
     }
 
     openai_url = "https://api.openai.com/v1/chat/completions"
-    httpx_client = httpx.Client()
+    httpx_client = httpx.Client(verify=False)
     entire_message = ""
     print("\n\033[92mCalling GPT to get your answer...\n", flush=True)
     log.info(f"Calling GPT with message: {message}\nOutputs: {outputs_to_send}")
