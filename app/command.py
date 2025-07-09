@@ -9,14 +9,25 @@ import os
 import re
 import select
 import subprocess
+import sys
 import time
+from pathlib import Path
 
+# Add the current directory to Python path for imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+try:
+    from terminal_logger import TerminalLogger
+    TERMINAL_LOGGER_AVAILABLE = True
+except ImportError:
+    TERMINAL_LOGGER_AVAILABLE = False
 
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ITERM2_LOGS = os.getenv("ITERM2_LOGS")
 CLI_LOG_DELIMITER = os.getenv("CLI_LOG_DELIMITER")
+LEW_LOG_DIR = os.getenv("LEW_LOG_DIR", os.path.expanduser("~/lew_logs"))
 COMMAND_DELIM = "PLEASE RUN COMMAND"
 
 
@@ -41,6 +52,113 @@ log.addHandler(file_handler)
 
 
 def get_latest_outputs(cnt):
+    """
+    Get the latest command outputs using the new terminal logger system.
+    Falls back to iTerm2 logs if the new system isn't available.
+    """
+    try:
+        # Try to use the new terminal logger first
+        if TERMINAL_LOGGER_AVAILABLE:
+            return get_latest_outputs_from_logger(cnt)
+        
+        # Fall back to iTerm2 logs if available
+        if ITERM2_LOGS and CLI_LOG_DELIMITER:
+            return get_latest_outputs_from_iterm2(cnt)
+        
+        # If neither is available, show a helpful message
+        print("No logging system configured. Please set up terminal logging.")
+        print("Run: source app/shell_integration.sh")
+        return ""
+        
+    except Exception as e:
+        log.error(f"get_latest_outputs: {e}")
+        print(f"Failed to get the latest command outputs: {e}")
+        return ""
+
+
+def get_latest_outputs_from_logger(cnt):
+    """Get outputs using the new terminal logger system"""
+    try:
+        logger = TerminalLogger(LEW_LOG_DIR)
+        
+        # Get recent commands from all session files
+        all_commands = []
+        log_dir = Path(LEW_LOG_DIR)
+        
+        # Get all session files, sorted by modification time (newest first)
+        session_files = sorted(
+            log_dir.glob("session_*.json"), 
+            key=lambda x: x.stat().st_mtime, 
+            reverse=True
+        )
+        
+        # Read commands from session files until we have enough
+        for session_file in session_files:
+            try:
+                with open(session_file, 'r') as f:
+                    for line in f:
+                        if line.strip():
+                            try:
+                                command_data = json.loads(line.strip())
+                                all_commands.append(command_data)
+                            except json.JSONDecodeError:
+                                continue
+                
+                # If we have enough commands, break
+                if len(all_commands) >= cnt:
+                    break
+                    
+            except FileNotFoundError:
+                continue
+        
+        # Take the last cnt commands
+        recent_commands = all_commands[-cnt:] if cnt > 0 else []
+        
+        # For commands without output, try to get safe command output
+        enhanced_commands = []
+        for cmd in recent_commands:
+            command_text = cmd.get('command', '')
+            output = cmd.get('output', '')
+            
+            # If no output and command is safe to re-run, try to get output
+            if not output and is_safe_to_rerun(command_text):
+                try:
+                    result = subprocess.run(
+                        command_text, 
+                        shell=True, 
+                        capture_output=True, 
+                        text=True, 
+                        timeout=5
+                    )
+                    output = result.stdout + result.stderr
+                except (subprocess.TimeoutExpired, Exception):
+                    output = ""
+            
+            enhanced_commands.append({
+                'command': command_text,
+                'output': output,
+                'timestamp': cmd.get('timestamp', '')
+            })
+        
+        # Format for LEW
+        formatted_parts = []
+        for cmd in enhanced_commands:
+            formatted_parts.append(f"{cmd['command']}\n{cmd['output']}")
+        
+        outputs_to_send = "\n\n".join(formatted_parts)
+        
+        # Clean up old logs
+        logger.cleanup_old_logs()
+        
+        return outputs_to_send
+        
+    except Exception as e:
+        log.error(f"get_latest_outputs_from_logger: {e}")
+        return ""
+
+
+def get_latest_outputs_from_iterm2(cnt):
+    """Original iTerm2 log parsing (fallback)"""
     try:
         # Get a list of all log files
         log_files = glob.glob(os.path.expanduser(ITERM2_LOGS))
@@ -74,10 +192,44 @@ def get_latest_outputs(cnt):
 
         return outputs_to_send
     except Exception as e:
-        log.error(f"get_latest_outputs: {e}")
-        print(
-            "Failed to get the latest command outputs. Please check the logs for more information."
-        )
+        log.error(f"get_latest_outputs_from_iterm2: {e}")
+        return ""
+
+
+def is_safe_to_rerun(command):
+    """Check if a command is safe to re-run to get output"""
+    # Commands that are safe to re-run (read-only operations)
+    safe_commands = [
+        'ls', 'pwd', 'whoami', 'date', 'uname', 'ps', 'df', 'du', 'free',
+        'cat', 'head', 'tail', 'grep', 'find', 'which', 'type', 'wc',
+        'git status', 'git log', 'git diff', 'git branch', 'git remote',
+        'pip list', 'pip show', 'npm list', 'npm info',
+        'docker ps', 'docker images', 'kubectl get', 'aws'
+    ]
+    
+    # Commands that should never be re-run
+    unsafe_commands = [
+        'rm', 'rmdir', 'mv', 'cp', 'chmod', 'chown', 'kill', 'killall',
+        'sudo', 'su', 'reboot', 'shutdown', 'mkfs', 'fdisk', 'dd',
+        'git add', 'git commit', 'git push', 'git pull', 'git merge',
+        'npm install', 'pip install', 'make', 'cmake', 'docker run',
+        'docker build', 'kubectl apply', 'kubectl delete'
+    ]
+    
+    command_lower = command.lower().strip()
+    
+    # Check if it's explicitly unsafe
+    for unsafe in unsafe_commands:
+        if command_lower.startswith(unsafe):
+            return False
+    
+    # Check if it's explicitly safe
+    for safe in safe_commands:
+        if command_lower.startswith(safe):
+            return True
+    
+    # Default to unsafe for unknown commands
+    return False
 
 
 def run_command(command):
